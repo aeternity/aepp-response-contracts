@@ -52,6 +52,7 @@ contract('QuestionCreator', (accounts) => {
               question.highestDonors(0).then(([addr]) => assert.equal(addr, accounts[0])),
               question.donorCount().then(d => assert.equal(d, 1)),
               question.donations().then(d => assert.equal(d, testAmount)),
+              question.author().then(d => assert.equal(d, accounts[0])),
               token.balanceOf(question.address).then(d => assert.equal(d, testAmount)),
             ])));
   };

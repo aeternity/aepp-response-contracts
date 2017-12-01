@@ -22,6 +22,7 @@ contract Question {
   HighestDonor[5] public highestDonors;
   uint public donorCount;
   uint256 public donations;
+  address public author;
 
   modifier beforeDeadline() {
     require(now < deadline);
@@ -32,7 +33,7 @@ contract Question {
     AEToken _token, address _backend,
     string _twitterAccount, string _question,
     address _charityAddress, uint _deadline,
-    address author, uint amount
+    address _author, uint amount
   ) {
     require(bytes(_twitterAccount).length != 0);
     // todo check twitter account more carefully
@@ -45,11 +46,12 @@ contract Question {
     question = _question;
     charityAddress = _charityAddress;
     deadline = _deadline;
+    author = _author;
 
     donorCount = 1;
     donations = amount;
-    donorAmounts[author] = amount;
-    highestDonors[0] = HighestDonor({ addr: author, lastDonatedAt: now });
+    donorAmounts[_author] = amount;
+    highestDonors[0] = HighestDonor({ addr: _author, lastDonatedAt: now });
   }
 
   function receiveApproval(address from, uint256 value, address _tokenContract, bytes extraData) beforeDeadline {

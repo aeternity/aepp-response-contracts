@@ -14,7 +14,7 @@ contract Question {
   address backend;
   string public twitterAccount;
   string public question;
-  address public charityAddress;
+  address public charity;
   uint public createdAt;
   uint public deadline;
   uint public tweetId;
@@ -31,10 +31,8 @@ contract Question {
   }
 
   function Question(
-    AEToken _token, address _backend,
-    string _twitterAccount, string _question,
-    address _charityAddress, uint _deadline,
-    address _author, uint amount
+    AEToken _token, address _backend, string _twitterAccount, string _question,
+    address _charity, uint _deadline, address _author, uint amount
   ) {
     require(bytes(_twitterAccount).length != 0);
     // todo check twitter account more carefully
@@ -45,7 +43,7 @@ contract Question {
     backend = _backend;
     twitterAccount = _twitterAccount;
     question = _question;
-    charityAddress = _charityAddress;
+    charity = _charity;
     deadline = _deadline;
     author = _author;
 
@@ -83,7 +81,7 @@ contract Question {
   function answer(uint _tweetId) beforeDeadline {
     require(msg.sender == backend);
     tweetId = _tweetId;
-    assert(token.transfer(charityAddress, donations));
+    assert(token.transfer(charity, donations));
   }
 
   function revertDonation() {

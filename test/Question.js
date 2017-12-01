@@ -36,7 +36,6 @@ increaseTime().then(() => {
   const testAccount = 'test_account';
   const testQuestion = 'test_question';
   const testAmount = 1;
-  const testCharityId = 2;
   const testCharity = '0x45992982736870fe45c41049c5f785d4e4cc38ec';
   const testAnswer = 123;
 
@@ -92,7 +91,7 @@ increaseTime().then(() => {
         encodeParameters(['uint', 'uint'], [32 * 4, length]),
         encodeString(testAccount),
         encodeString(testQuestion),
-        encodeParameters(['uint', 'uint'], [testCharityId, goodDeadline]).slice(2),
+        encodeParameters(['address', 'uint'], [testCharity, goodDeadline]).slice(2),
       ].join('');
 
       return Promise.all([

@@ -8,17 +8,15 @@ contract QuestionCreator {
   ContractRegistry registry;
   AEToken token;
   address backend;
-  mapping(uint => address) charityAddresses;
+  mapping(address => bool) charities;
 
   function QuestionCreator(ContractRegistry _registry, AEToken _token, address _backend) {
     registry = _registry;
     token = _token;
     backend = _backend;
 
-    charityAddresses[1] = 0xfA491DF8780761853D127A9f7b2772D688A0E3B5;
-    charityAddresses[2] = 0x45992982736870Fe45c41049C5F785d4E4cc38Ec;
-    charityAddresses[3] = 0xfA491DF8780761853D127A9f7b2772D688A0E3B5;
-    charityAddresses[4] = 0x45992982736870Fe45c41049C5F785d4E4cc38Ec;
+    charities[0xfA491DF8780761853D127A9f7b2772D688A0E3B5] = true;
+    charities[0x45992982736870Fe45c41049C5F785d4E4cc38Ec] = true;
   }
 
   function receiveApproval(address from, uint256 value, address _tokenContract, bytes extraData) {
@@ -38,18 +36,16 @@ contract QuestionCreator {
     padding += 32;
     padding += bytes(question).length + (32 - bytes(question).length % 32) % 32;
 
-    uint256 charityId;
-    assembly { charityId := mload(add(extraData, padding)) }
+    address charity;
+    assembly { charity := mload(add(extraData, padding)) }
     padding += 32;
 
     uint256 deadline;
     assembly { deadline := mload(add(extraData, padding)) }
 
-    require(charityAddresses[charityId] != 0);
+    require(charities[charity]);
     Question newQuestion = new Question(
-      token, backend, twitterAccount, question,
-      charityAddresses[charityId], deadline,
-      from, value);
+      token, backend, twitterAccount, question, charity, deadline, from, value);
     require(token.transferFrom(from, newQuestion, value));
     registry.add(newQuestion);
   }

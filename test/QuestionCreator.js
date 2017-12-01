@@ -10,8 +10,7 @@ const QuestionCreator = artifacts.require('QuestionCreator');
 
 contract('QuestionCreator', (accounts) => {
   const testAmount = 3;
-  const testCharityId = 2;
-  const testCharityAddress = '0x45992982736870fe45c41049c5f785d4e4cc38ec';
+  const testCharity = '0x45992982736870fe45c41049c5f785d4e4cc38ec';
   const testDate = (new Date('2100-01-01')).getTime() / 1000;
   const encodeParameter = web3_1_0.eth.abi.encodeParameter.bind(web3_1_0.eth.abi);
   const encodeParameters = web3_1_0.eth.abi.encodeParameters.bind(web3_1_0.eth.abi);
@@ -28,7 +27,7 @@ contract('QuestionCreator', (accounts) => {
       encodeParameters(['uint', 'uint'], [32 * 4, length]),
       encodeString(testAccount),
       encodeString(testQuestion),
-      encodeParameters(['uint', 'uint'], [testCharityId, testDate]).slice(2),
+      encodeParameters(['address', 'uint'], [testCharity, testDate]).slice(2),
     ].join('');
 
     return Promise.all([
@@ -46,7 +45,7 @@ contract('QuestionCreator', (accounts) => {
               question.version().then(c => assert.equal(c, 1)),
               question.twitterAccount().then(t => assert.equal(t, testAccount)),
               question.question().then(q => assert.equal(q, testQuestion)),
-              question.charityAddress().then(q => assert.equal(q, testCharityAddress)),
+              question.charity().then(q => assert.equal(q, testCharity)),
               question.deadline().then(d => assert.equal(d, testDate)),
               question.donorAmounts(accounts[0]).then(amount => assert.equal(amount, testAmount)),
               question.highestDonors(0).then(([addr]) => assert.equal(addr, accounts[0])),

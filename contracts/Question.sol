@@ -15,6 +15,7 @@ contract Question {
   string public twitterAccount;
   string public question;
   address public charityAddress;
+  uint public createdAt;
   uint public deadline;
   string public tweetUrl;
   mapping(address => uint) public donorAmounts;
@@ -48,6 +49,7 @@ contract Question {
     deadline = _deadline;
     author = _author;
 
+    createdAt = now;
     donorCount = 1;
     donations = amount;
     donorAmounts[_author] = amount;

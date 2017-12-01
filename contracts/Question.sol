@@ -19,6 +19,7 @@ contract Question {
   string public tweetUrl;
   mapping(address => uint) public donorAmounts;
   mapping(address => bool) public donorRevertDonation;
+  address[] = allDonors; // could use an array like this to keep track of all donors instead of just top 5
   HighestDonor[5] public highestDonors;
   uint public donorCount;
   uint256 public donations;
@@ -49,11 +50,16 @@ contract Question {
     donorCount = 1;
     donations = amount;
     donorAmounts[author] = amount;
+    allDonors.push(author);
     highestDonors[0] = HighestDonor({ addr: author, lastDonatedAt: now });
+  }
+  
+  function getDonorAmountByKey (uint key) public constant returns(donation uint) {
+    return donorAmounts[allDonors[key]];
   }
 
   function receiveApproval(address from, uint256 value, address _tokenContract, bytes extraData) beforeDeadline {
-    require(address(token) == _tokenContract);
+    require(address(token) == _tokenContract); // necessary?
     require(value > 0);
     require(token.transferFrom(from, this, value));
 
@@ -63,6 +69,8 @@ contract Question {
     updateHighestDonors(from);
   }
 
+  // expensive computation that could be done on the client side
+  // if date is important maybe this struct should be applied to all donors instead
   function updateHighestDonors(address donor) internal {
     uint amount = donorAmounts[donor];
     if (donorAmounts[highestDonors[4].addr] >= amount) return;
@@ -78,9 +86,9 @@ contract Question {
 
   function answer(string _tweetUrl) beforeDeadline {
     require(msg.sender == backend);
-    tweetUrl = _tweetUrl;
     assert(token.transfer(charityAddress, donations));
-  }
+    tweetUrl = _tweetUrl;
+}
 
   function revertDonation() {
     require(bytes(tweetUrl).length == 0);

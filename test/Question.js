@@ -38,7 +38,7 @@ increaseTime().then(() => {
   const testAmount = 1;
   const testCharityId = 2;
   const testCharity = '0x45992982736870fe45c41049c5f785d4e4cc38ec';
-  const testAnswer = 'test_answer';
+  const testAnswer = 123;
 
   contract('Question', (accounts) => {
     it('should be deployable', () =>
@@ -115,7 +115,7 @@ increaseTime().then(() => {
             .then(balanceBefore =>
               question.answer(testAnswer, { from: accounts[1] })
                 .then(() => Promise.all([
-                  question.tweetUrl().then(t => assert.equal(t, testAnswer)),
+                  question.tweetId().then(t => assert.equal(t, testAnswer)),
                   token.balanceOf(testCharity).then(balanceAfter =>
                     assert.equal(balanceAfter, +balanceBefore + testAmount)),
                 ])))));

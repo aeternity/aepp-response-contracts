@@ -17,7 +17,7 @@ contract Question {
   address public charityAddress;
   uint public createdAt;
   uint public deadline;
-  string public tweetUrl;
+  uint public tweetId;
   mapping(address => uint) public donorAmounts;
   mapping(address => bool) public donorRevertDonation;
   HighestDonor[5] public highestDonors;
@@ -80,14 +80,14 @@ contract Question {
     highestDonors[i] = HighestDonor({ addr: donor, lastDonatedAt: now });
   }
 
-  function answer(string _tweetUrl) beforeDeadline {
+  function answer(uint _tweetId) beforeDeadline {
     require(msg.sender == backend);
-    tweetUrl = _tweetUrl;
+    tweetId = _tweetId;
     assert(token.transfer(charityAddress, donations));
   }
 
   function revertDonation() {
-    require(bytes(tweetUrl).length == 0);
+    require(tweetId == 0);
     require(now >= deadline);
     require(donorAmounts[msg.sender] != 0);
     require(!donorRevertDonation[msg.sender]);

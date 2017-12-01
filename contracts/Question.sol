@@ -61,7 +61,7 @@ contract Question {
   function receiveApproval(address from, uint256 value, address _tokenContract, bytes extraData) beforeDeadline {
     require(address(token) == _tokenContract); // necessary?
     require(value > 0);
-    require(token.transferFrom(from, this, value));
+    require(token.transferFrom(from, this, value)); // why is from being used instead of msg.sender?
 
     if (0 == donorAmounts[from]) donorCount += 1;
     if (0 == donorAmounts[from]) allDonors.push(from);

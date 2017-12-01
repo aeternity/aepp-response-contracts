@@ -64,6 +64,7 @@ contract Question {
     require(token.transferFrom(from, this, value));
 
     if (0 == donorAmounts[from]) donorCount += 1;
+    if (0 == donorAmounts[from]) allDonors.push(from);
     donations += value;
     donorAmounts[from] += value;
     updateHighestDonors(from);

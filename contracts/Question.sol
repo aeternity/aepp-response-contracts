@@ -1,22 +1,25 @@
 pragma solidity ^0.4.15;
 
-import "./ERC20Token.sol";
+import "./AEToken/AEToken.sol";
 
 contract Question {
   uint public constant version = 1;
 
-  struct Charity {
-    string name;
+  struct HighestDonor {
     address addr;
+    uint lastDonatedAt;
   }
 
-  ERC20Interface token;
-  Charity[] public charities;
-  string public question;
+  AEToken token;
+  address backend;
   string public twitterAccount;
+  string public question;
+  address public charityAddress;
   uint public deadline;
   string public tweetUrl;
-  mapping(address => uint256) public donorDonations;
+  mapping(address => uint) public donorAmounts;
+  mapping(address => bool) public donorRevertDonation;
+  HighestDonor[5] public highestDonors;
   uint public donorCount;
   uint256 public donations;
 
@@ -25,52 +28,66 @@ contract Question {
     _;
   }
 
-  function getCharitiesCount() constant returns (uint) {
-    return charities.length;
-  }
-
-  function Question(ERC20Interface _token, string _question, string _twitterAccount, uint _deadline) {
-    token = _token;
-    require(bytes(_question).length != 0);
+  function Question(
+    AEToken _token, address _backend,
+    string _twitterAccount, string _question,
+    address _charityAddress, uint _deadline,
+    address author, uint amount
+  ) {
     require(bytes(_twitterAccount).length != 0);
     // todo check twitter account more carefully
-    require(now < _deadline);
+    require(bytes(_question).length != 0);
+    require(now + 1 weeks <= _deadline);
 
-    charities.push(Charity({ name: 'Test charity 1',
-      addr: 0xfA491DF8780761853D127A9f7b2772D688A0E3B5 }));
-    charities.push(Charity({ name: 'Test charity 2',
-      addr: 0x45992982736870Fe45c41049C5F785d4E4cc38Ec }));
-    charities.push(Charity({ name: 'Test charity 3',
-      addr: 0xfA491DF8780761853D127A9f7b2772D688A0E3B5 }));
-    charities.push(Charity({ name: 'Test charity 4',
-      addr: 0x45992982736870Fe45c41049C5F785d4E4cc38Ec }));
-
-    question = _question;
+    token = _token;
+    backend = _backend;
     twitterAccount = _twitterAccount;
+    question = _question;
+    charityAddress = _charityAddress;
     deadline = _deadline;
+
+    donorCount = 1;
+    donations = amount;
+    donorAmounts[author] = amount;
+    highestDonors[0] = HighestDonor({ addr: author, lastDonatedAt: now });
   }
 
-  function increase(uint256 amount) beforeDeadline {
-    require(token.transferFrom(msg.sender, this, amount));
-    if (0 == donorDonations[msg.sender]) donorCount += 1;
-    donations += amount;
-    donorDonations[msg.sender] += amount;
+  function receiveApproval(address from, uint256 value, address _tokenContract, bytes extraData) beforeDeadline {
+    require(address(token) == _tokenContract);
+    require(value > 0);
+    require(token.transferFrom(from, this, value));
+
+    if (0 == donorAmounts[from]) donorCount += 1;
+    donations += value;
+    donorAmounts[from] += value;
+    updateHighestDonors(from);
+  }
+
+  function updateHighestDonors(address donor) internal {
+    uint amount = donorAmounts[donor];
+    if (donorAmounts[highestDonors[4].addr] >= amount) return;
+    for (uint i = 0; i <= 4 && highestDonors[i].addr != donor; i++) {}
+
+    for (; i > 0 && donorAmounts[highestDonors[i - 1].addr] < amount; i--) {
+      if (i < 5) {
+        highestDonors[i] = highestDonors[i - 1];
+      }
+    }
+    highestDonors[i] = HighestDonor({ addr: donor, lastDonatedAt: now });
   }
 
   function answer(string _tweetUrl) beforeDeadline {
-    require(bytes(_tweetUrl).length != 0);
-    // todo check tweet more carefully, get charity id
+    require(msg.sender == backend);
     tweetUrl = _tweetUrl;
-    assert(token.transfer(charities[0].addr, donations));
+    assert(token.transfer(charityAddress, donations));
   }
 
-  function revertDonation()  {
+  function revertDonation() {
     require(bytes(tweetUrl).length == 0);
     require(now >= deadline);
-    require(donorDonations[msg.sender] != 0);
-    assert(token.transfer(msg.sender, donorDonations[msg.sender]));
-    donorCount -= 1;
-    donations -= donorDonations[msg.sender];
-    donorDonations[msg.sender] = 0;
+    require(donorAmounts[msg.sender] != 0);
+    require(!donorRevertDonation[msg.sender]);
+    assert(token.transfer(msg.sender, donorAmounts[msg.sender]));
+    donorRevertDonation[msg.sender] = true;
   }
 }

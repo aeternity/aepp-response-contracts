@@ -9,7 +9,7 @@ module.exports = (deployer, environment, accounts) => {
       QuestionCreator, ContractRegistry.address, AEToken.address, accounts[1]))
     .then(() => Promise.all([
       AEToken.deployed()
-        .then(token => token.prefill(accounts, (new Array(10)).fill(10))
+        .then(token => token.prefill(accounts, (new Array(10)).fill(100))
           .then(() => token.launch())),
       ContractRegistry.deployed()
         .then(registry => registry.setRecorder(QuestionCreator.address)),

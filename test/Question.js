@@ -52,36 +52,6 @@ increaseTime().then(() => {
         testCharity, badDeadline, accounts[0], testAmount)
         .then(assert.fail, assertError));
 
-    it('increase', () =>
-      Promise.all([
-        Question.new(
-          AEToken.address, testBackend, testAccount, testQuestion,
-          testCharity, goodDeadline, accounts[0], testAmount),
-        AEToken.deployed(),
-      ]).then(([question, token]) =>
-        token.approveAndCall(question.address, testAmount * 2,
-          encodeParameter('uint', 32 * 4), { from: accounts[1] })
-          .then(() => Promise.all([
-            question.donations().then(d => assert.equal(d, testAmount * 3)),
-            question.donorAmounts(accounts[0]).then(amount => assert.equal(amount, testAmount)),
-            question.donorAmounts(accounts[1]).then(amount => assert.equal(amount, testAmount * 2)),
-            question.highestDonors(0).then(([addr]) => assert.equal(addr, accounts[1])),
-            question.highestDonors(1).then(([addr]) => assert.equal(addr, accounts[0])),
-            question.donorCount().then(d => assert.equal(d, 2)),
-          ]))));
-
-    it('can\'t increase after deadline', () =>
-      Promise.all([
-        Question.new(
-          AEToken.address, testBackend, testAccount, testQuestion,
-          testCharity, goodDeadline, accounts[0], testAmount),
-        AEToken.deployed(),
-      ]).then(([question, token]) =>
-        increaseTime(week + 1000)
-          .then(() => token.approveAndCall(question.address, testAmount * 2,
-            encodeParameter('uint', 32 * 4), { from: accounts[1] }))
-          .then(assert.fail, assertError)));
-
     const createQuestion = () => {
       const length =
         encodeString(testAccount).length / 2 +
@@ -106,6 +76,55 @@ increaseTime().then(() => {
             .then(contract => Question.at(contract))
             .then(question => [question, token]));
     };
+
+    const emptyBytes = encodeParameter('uint', 32 * 4);
+
+    it('increase by the same account', () =>
+      createQuestion().then(([question, token]) =>
+        token.approveAndCall(question.address, testAmount * 2, emptyBytes)
+          .then(() => Promise.all([
+            question.donations().then(d => assert.equal(d, testAmount * 3)),
+            question.donorAmounts(accounts[0]).then(amount => assert.equal(amount, testAmount * 3)),
+            question.highestDonors(0).then(([address]) => assert.equal(address, accounts[0])),
+            question.donorCount().then(d => assert.equal(d, 1)),
+          ]))));
+
+    it('increase', () =>
+      createQuestion().then(([question, token]) =>
+        token.approveAndCall(question.address, testAmount * 2, emptyBytes, { from: accounts[1] })
+          .then(() => Promise.all([
+            question.donations().then(d => assert.equal(d, testAmount * 3)),
+            question.donorAmounts(accounts[0]).then(amount => assert.equal(amount, testAmount)),
+            question.donorAmounts(accounts[1]).then(amount => assert.equal(amount, testAmount * 2)),
+            question.highestDonors(0).then(([address]) => assert.equal(address, accounts[1])),
+            question.highestDonors(1).then(([address]) => assert.equal(address, accounts[0])),
+            question.donorCount().then(d => assert.equal(d, 2)),
+          ]))));
+
+    it('increase by multiple accounts', () =>
+      createQuestion().then(([question, token]) =>
+        Promise.all(
+          [[1, 2], [2, 3], [1, 4], [3, 1], [4, 5], [5, 3], [1, 10]]
+            .map(([accIdx, amount]) => token
+              .approveAndCall(question.address, amount, emptyBytes, { from: accounts[accIdx] })))
+          .then(() => Promise.all([
+            Promise.all((new Array(6)).fill().map((_, idx) =>
+              question.donorAmounts(accounts[idx])))
+              .then(amounts => assert.deepEqual(amounts.map(i => +i), [1, 16, 3, 1, 5, 3])),
+            Promise.all((new Array(5)).fill().map((_, idx) =>
+              question.highestDonors(idx).then(([address]) => address)))
+              .then(addresses =>
+                assert.deepEqual(addresses, [1, 4, 2, 5, 0].map(i => accounts[i]))),
+            question.donations().then(d => assert.equal(d, testAmount * 29)),
+            question.donorCount().then(d => assert.equal(d, 6)),
+          ]))));
+
+    it('can\'t increase after deadline', () =>
+      createQuestion().then(([question, token]) =>
+        increaseTime(week + 1000)
+          .then(() => token.approveAndCall(question.address, testAmount * 2,
+            encodeParameter('uint', 32 * 4), { from: accounts[1] }))
+          .then(assert.fail, assertError)));
 
     it('answer', () =>
       createQuestion()

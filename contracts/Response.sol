@@ -115,11 +115,11 @@ contract Response {
     require(now < question.deadlineAt);
 
     question.amount += value;
-    if (0 == question.supporterAmount[from]) question.supporterCount += 1;
-    question.supporterAmount[from] += value;
+    mapping(address => uint) amounts = question.supporterAmount;
+    if (0 == amounts[from]) question.supporterCount += 1;
+    amounts[from] += value;
 
     HighestSupporter[5] storage supporters = question.highestSupporters;
-    mapping(address => uint) amounts = question.supporterAmount;
     if (amounts[supporters[4].account] >= amounts[from] && supporters[4].account != from) {
       return;
     }
@@ -139,9 +139,10 @@ contract Response {
 
   function revertSupport(uint questionIdx) public {
     Question storage question = questions[questionIdx];
+    uint amount = question.supporterAmount[msg.sender];
     require(question.tweetId == 0 && now >= question.deadlineAt &&
-      !question.isSupportReverted[msg.sender] && question.supporterAmount[msg.sender] > 0);
-    assert(token.transfer(msg.sender, question.supporterAmount[msg.sender]));
+      !question.isSupportReverted[msg.sender] && amount > 0);
+    assert(token.transfer(msg.sender, amount));
     question.isSupportReverted[msg.sender] = true;
   }
 }

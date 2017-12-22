@@ -16,16 +16,16 @@ contract Response {
     owner = msg.sender;
   }
 
-  modifier onlyOwner {
-    require(msg.sender == owner);
+  modifier onlyBy(address account) {
+    require(msg.sender == account);
     _;
   }
 
-  function setBackend(address _backend) public onlyOwner {
+  function setBackend(address _backend) public onlyBy(owner) {
     backend = _backend;
   }
 
-  function setFoundation(address foundation, bool exist) public onlyOwner {
+  function setFoundation(address foundation, bool exist) public onlyBy(owner) {
     foundations[foundation] = exist;
   }
 
@@ -131,9 +131,9 @@ contract Response {
     }
   }
 
-  function answer(uint questionIdx, uint tweetId) public {
+  function answer(uint questionIdx, uint tweetId) public onlyBy(backend) {
     Question storage question = questions[questionIdx];
-    require(msg.sender == backend && now < question.deadlineAt);
+    require(now < question.deadlineAt);
     assert(token.transfer(question.foundation, question.amount));
     question.tweetId = tweetId;
   }

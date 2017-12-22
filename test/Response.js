@@ -120,14 +120,15 @@ contract('Response', (accounts) => {
               Promise.all([
                 response.questions(questionIdx).then(([
                   twitterUserId, content, author, foundation,
-                  createdAt, deadlineAt, tweetId, supporterCount, amount
+                  createdAt, deadlineAt, questionTweetId, answerTweetId, supporterCount, amount
                 ]) => {
                   assert.equal(twitterUserId, testAccount);
                   assert.equal(content, question);
                   assert.equal(author, accounts[0]);
                   assert.equal(foundation, testFoundation);
                   assert.equal(deadlineAt, testDeadline);
-                  assert.equal(tweetId, 0);
+                  assert.equal(questionTweetId, 0);
+                  assert.equal(answerTweetId, 0);
                   assert.equal(supporterCount, 1);
                   assert.equal(amount, testAmount);
                 }),
@@ -192,7 +193,7 @@ contract('Response', (accounts) => {
         .then(() => Promise.all([
           response.questions(questionIdx).then(([
             twitterUserId, content, author, foundation,
-            createdAt, deadlineAt, tweetId, supporterCount, amount
+            createdAt, deadlineAt, questionTweetId, answerTweetId, supporterCount, amount
           ]) => {
             assert.equal(supporterCount, 1);
             assert.equal(amount, testAmount * 3);
@@ -212,7 +213,7 @@ contract('Response', (accounts) => {
         .then(() => Promise.all([
           response.questions(questionIdx).then(([
             twitterUserId, content, author, foundation,
-            createdAt, deadlineAt, tweetId, supporterCount, amount
+            createdAt, deadlineAt, questionTweetId, answerTweetId, supporterCount, amount
           ]) => {
             assert.equal(supporterCount, 2);
             assert.equal(amount, testAmount * 3);
@@ -263,7 +264,7 @@ contract('Response', (accounts) => {
           .then(() => Promise.all([
             response.questions(questionIdx).then(([
               twitterUserId, content, author, foundation,
-              createdAt, deadlineAt, tweetId, _supporterCount, amount
+              createdAt, deadlineAt, questionTweetId, answerTweetId, _supporterCount, amount
             ]) => {
               assert.equal(_supporterCount, supporterCount);
               assert.equal(amount, _.sum(amounts));
@@ -285,30 +286,53 @@ contract('Response', (accounts) => {
               token.approveAndCall(response.address, testAmount, genSupportBytes(questionIdx))
                 .then(assert.fail, assertError)))));
 
-  it('answer', () =>
+  it('setAnswerTweetId', () =>
     createQuestion().then(([response, questionIdx, token]) =>
       token.balanceOf(testFoundation)
         .then(balanceBefore =>
-          response.answer(questionIdx, testAnswer, { from: testBackend })
+          response.setAnswerTweetId(questionIdx, testAnswer, { from: testBackend })
             .then(() => Promise.all([
               response.questions(questionIdx).then(([
-                twitterUserId, content, author, foundation, createdAt, deadlineAt, tweetId,
-              ]) => assert.equal(tweetId, testAnswer)),
+                twitterUserId, content, author, foundation,
+                createdAt, deadlineAt, questionTweetId, answerTweetId,
+              ]) => assert.equal(answerTweetId, testAnswer)),
               token.balanceOf(testFoundation).then(balanceAfter =>
                 assert.equal(balanceAfter, +balanceBefore + testAmount)),
             ])))));
 
-  it('can\'t answer after deadline', () =>
+  it('can\'t setAnswerTweetId after deadline', () =>
     increaseTime().then(currentTime =>
       createQuestion({ deadlineAt: currentTime + week + 500 })
         .then(([response, questionIdx]) =>
           increaseTime(week + 1000)
-            .then(() => response.answer(questionIdx, testAnswer, { from: testBackend })
+            .then(() => response.setAnswerTweetId(questionIdx, testAnswer, { from: testBackend })
               .then(assert.fail, assertError)))));
 
-  it('answerable only by backend', () =>
+  it('setAnswerTweetIdable only by backend', () =>
     createQuestion().then(([response, questionIdx]) =>
-      response.answer(questionIdx, testAnswer)
+      response.setAnswerTweetId(questionIdx, testAnswer)
+        .then(assert.fail, assertError)));
+
+  it('setQuestionTweetId', () =>
+    createQuestion().then(([response, questionIdx]) =>
+      response.setQuestionTweetId(questionIdx, testAnswer, { from: testBackend })
+        .then(() =>
+          response.questions(questionIdx).then(([
+            twitterUserId, content, author, foundation,
+            createdAt, deadlineAt, questionTweetId,
+          ]) => assert.equal(questionTweetId, testAnswer)))));
+
+  it('can\'t setQuestionTweetId after deadline', () =>
+    increaseTime().then(currentTime =>
+      createQuestion({ deadlineAt: currentTime + week + 500 })
+        .then(([response, questionIdx]) =>
+          increaseTime(week + 1000)
+            .then(() => response.setQuestionTweetId(questionIdx, testAnswer, { from: testBackend })
+              .then(assert.fail, assertError)))));
+
+  it('setQuestionTweetId only by backend', () =>
+    createQuestion().then(([response, questionIdx]) =>
+      response.setQuestionTweetId(questionIdx, testAnswer)
         .then(assert.fail, assertError)));
 
   it('revert support', () =>

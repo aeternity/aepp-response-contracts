@@ -32,7 +32,7 @@ contract Response {
   }
 
   modifier unanswered(uint questionIdx) {
-    require(questions[questionIdx].tweetId == 0);
+    require(questions[questionIdx].answerTweetId == 0);
     _;
   }
 
@@ -60,7 +60,8 @@ contract Response {
     address foundation;
     uint createdAt;
     uint deadlineAt;
-    uint tweetId;
+    uint questionTweetId;
+    uint answerTweetId;
 
     mapping(address => uint) supporterAmount;
     mapping(address => bool) isSupportReverted;
@@ -127,7 +128,7 @@ contract Response {
     Question storage question = questions[questionIdx];
     require(question.createdAt != 0);
     require(now < question.deadlineAt);
-    require(0 == question.tweetId);
+    require(0 == question.answerTweetId);
 
     question.amount += value;
     mapping(address => uint) amounts = question.supporterAmount;
@@ -145,11 +146,18 @@ contract Response {
     supporters[i] = HighestSupporter({ account: from, lastSupportAt: now });
   }
 
-  function answer(uint questionIdx, uint tweetId)
+  function setQuestionTweetId(uint questionIdx, uint questionTweetId)
+  public onlyBy(backend) deadline(DeadlineStates.Before, questionIdx) {
+    Question storage question = questions[questionIdx];
+    require(0 == question.questionTweetId);
+    question.questionTweetId = questionTweetId;
+  }
+
+  function setAnswerTweetId(uint questionIdx, uint answerTweetId)
   public onlyBy(backend) deadline(DeadlineStates.Before, questionIdx) unanswered(questionIdx) {
     Question storage question = questions[questionIdx];
     assert(token.transfer(question.foundation, question.amount));
-    question.tweetId = tweetId;
+    question.answerTweetId = answerTweetId;
   }
 
   function revertSupport(uint questionIdx)

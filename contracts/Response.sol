@@ -31,6 +31,11 @@ contract Response {
     _;
   }
 
+  modifier unanswered(uint questionIdx) {
+    require(questions[questionIdx].tweetId == 0);
+    _;
+  }
+
   function setBackend(address _backend) public onlyBy(owner) {
     backend = _backend;
   }
@@ -122,6 +127,7 @@ contract Response {
     Question storage question = questions[questionIdx];
     require(question.createdAt != 0);
     require(now < question.deadlineAt);
+    require(0 == question.tweetId);
 
     question.amount += value;
     mapping(address => uint) amounts = question.supporterAmount;
@@ -140,16 +146,17 @@ contract Response {
   }
 
   function answer(uint questionIdx, uint tweetId)
-  public onlyBy(backend) deadline(DeadlineStates.Before, questionIdx) {
+  public onlyBy(backend) deadline(DeadlineStates.Before, questionIdx) unanswered(questionIdx) {
     Question storage question = questions[questionIdx];
     assert(token.transfer(question.foundation, question.amount));
     question.tweetId = tweetId;
   }
 
-  function revertSupport(uint questionIdx) public deadline(DeadlineStates.After, questionIdx) {
+  function revertSupport(uint questionIdx)
+  public deadline(DeadlineStates.After, questionIdx) unanswered(questionIdx) {
     Question storage question = questions[questionIdx];
     uint amount = question.supporterAmount[msg.sender];
-    require(question.tweetId == 0 && !question.isSupportReverted[msg.sender] && amount > 0);
+    require(!question.isSupportReverted[msg.sender] && amount > 0);
     assert(token.transfer(msg.sender, amount));
     question.isSupportReverted[msg.sender] = true;
   }

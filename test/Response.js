@@ -79,11 +79,11 @@ contract('Response', (accounts) => {
 
   it('set foundation', () =>
     Response.new(accounts[0]).then(response =>
-      response.setFoundation(accounts[4], true)));
+      response.setFoundation(accounts[1], true)));
 
   it('can\'t set foundation by not the owner', () =>
-    createQuestion().then(([response]) =>
-      response.setFoundation(accounts[4], true, { from: accounts[1] })
+    Response.new(accounts[0]).then(response =>
+      response.setFoundation(accounts[2], true, { from: accounts[1] })
         .then(assert.fail, assertError)));
 
   const genSupportBytes = (questionIdx) =>

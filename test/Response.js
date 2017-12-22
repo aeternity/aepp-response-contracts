@@ -8,9 +8,7 @@ const Response = artifacts.require('Response');
 const assertError = error =>
     assert.equal(error.message, 'VM Exception while processing transaction: invalid opcode');
 
-const encodeParameter = web3_1_0.eth.abi.encodeParameter.bind(web3_1_0.eth.abi);
 const encodeParameters = web3_1_0.eth.abi.encodeParameters.bind(web3_1_0.eth.abi);
-const encodeString = string => encodeParameter('string', string).slice(66);
 
 const week = 7 * 24 * 60 * 60;
 const testAccount = 123;
@@ -39,6 +37,12 @@ const increaseTime = (seconds = 0) => new Promise((resolve, reject) =>
       }
     }));
 
+const getBalance = account => new Promise((resolve, reject) =>
+  web3.eth.getBalance(account, (err, response) => {
+    if (err) reject(err);
+    else resolve(response);
+  }));
+
 contract('Response', (accounts) => {
   const testToken = accounts[0];
   const testBackend = accounts[1];
@@ -51,21 +55,14 @@ contract('Response', (accounts) => {
     deadlineAt = testDeadline,
     amount = testAmount,
   } = {}) => {
-    const length =
-      encodeString(content).length / 2 +
-      32 * 3;
-    const bytes = [
-      encodeParameters(['uint', 'uint', 'uint'], [32 * 4, length, twitterUserId]),
-      encodeString(content),
-      encodeParameters(['address', 'uint'], [foundation, deadlineAt]).slice(2),
-    ].join('');
-
     return Promise.all([
       AEToken.deployed(),
       Response.deployed(),
     ])
       .then(([token, response]) =>
-        token.approveAndCall(response.address, amount, bytes)
+        token.approve(response.address, amount)
+          .then(() =>
+            response.createQuestion(twitterUserId, content, foundation, deadlineAt, amount))
           .then(() => response.questionCount())
           .then(count => [response, count - 1, token]));
   };
@@ -76,6 +73,18 @@ contract('Response', (accounts) => {
   it('can\'t set backend by not the owner', () =>
     Response.new(testToken).then(response =>
       response.setBackend(accounts[2], { from: accounts[1] })
+        .then(assert.fail, assertError)));
+
+  it('set backend fee', () =>
+    Response.new(testToken).then(response =>
+      response.setBackend(accounts[1])
+        .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
+        .then(() => response.backendFee())
+        .then(backendFee => assert.equal(backendFee, testAmount))));
+
+  it('can\'t set backend fee by not the backend', () =>
+    Response.new(testToken).then(response =>
+      response.setBackendFee(testAmount, { from: accounts[1] })
         .then(assert.fail, assertError)));
 
   it('set foundation', () =>
@@ -136,6 +145,38 @@ contract('Response', (accounts) => {
 
   it('create question', genCreateQuestionTest(1));
   it('create question with content longer than 32 bytes', genCreateQuestionTest(16));
+
+  it('create question with backend fee', () =>
+    AEToken.deployed().then(token =>
+      Response.new(token.address).then(response =>
+        Promise.all([
+          response.setBackend(accounts[1]),
+          response.setFoundation(accounts[2], true),
+          token.approve(response.address, testAmount),
+        ])
+          .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
+          .then(() => getBalance(accounts[1]))
+          .then(backendBalanceBefore =>
+            response.createQuestion(
+              testAccount, testQuestion, accounts[2],
+              testDeadline, testAmount, { value: testAmount })
+              .then(() => getBalance(accounts[1]))
+              .then(backendBalance =>
+                assert.equal(+backendBalance, +backendBalanceBefore + testAmount))))));
+
+  it('can\'t create question without backend fee', () =>
+    AEToken.deployed().then(token =>
+      Response.new(token.address).then(response =>
+        Promise.all([
+          response.setBackend(accounts[1]),
+          response.setFoundation(accounts[2], true),
+          token.approve(response.address, testAmount),
+        ])
+          .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
+          .then(() =>
+            response.createQuestion(
+              testAccount, testQuestion, accounts[2], testDeadline, testAmount)
+              .then(assert.fail, assertError)))));
 
   it('deadline must be greater than current date and one week', () =>
     createQuestion({ deadlineAt: Math.floor(new Date('2010-01-01') / 1000) })

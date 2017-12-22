@@ -40,6 +40,7 @@ const increaseTime = (seconds = 0) => new Promise((resolve, reject) =>
     }));
 
 contract('Response', (accounts) => {
+  const testToken = accounts[0];
   const testBackend = accounts[1];
   const testFoundation = accounts[2];
 
@@ -70,19 +71,19 @@ contract('Response', (accounts) => {
   };
 
   it('set backend', () =>
-    Response.new(accounts[0]).then(response => response.setBackend(accounts[2])));
+    Response.new(testToken).then(response => response.setBackend(accounts[2])));
 
   it('can\'t set backend by not the owner', () =>
-    Response.new(accounts[0]).then(response =>
+    Response.new(testToken).then(response =>
       response.setBackend(accounts[2], { from: accounts[1] })
         .then(assert.fail, assertError)));
 
   it('set foundation', () =>
-    Response.new(accounts[0]).then(response =>
+    Response.new(testToken).then(response =>
       response.setFoundation(accounts[1], true)));
 
   it('can\'t set foundation by not the owner', () =>
-    Response.new(accounts[0]).then(response =>
+    Response.new(testToken).then(response =>
       response.setFoundation(accounts[2], true, { from: accounts[1] })
         .then(assert.fail, assertError)));
 

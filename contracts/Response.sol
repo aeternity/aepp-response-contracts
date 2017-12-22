@@ -22,6 +22,15 @@ contract Response {
     _;
   }
 
+  enum DeadlineStates { Before, After }
+
+  modifier deadline(DeadlineStates state, uint questionIdx) {
+    uint deadlineAt = questions[questionIdx].deadlineAt;
+    require(state == DeadlineStates.Before && now < deadlineAt ||
+      state == DeadlineStates.After && now >= deadlineAt);
+    _;
+  }
+
   function setBackend(address _backend) public onlyBy(owner) {
     backend = _backend;
   }
@@ -130,18 +139,17 @@ contract Response {
     supporters[i] = HighestSupporter({ account: from, lastSupportAt: now });
   }
 
-  function answer(uint questionIdx, uint tweetId) public onlyBy(backend) {
+  function answer(uint questionIdx, uint tweetId)
+  public onlyBy(backend) deadline(DeadlineStates.Before, questionIdx) {
     Question storage question = questions[questionIdx];
-    require(now < question.deadlineAt);
     assert(token.transfer(question.foundation, question.amount));
     question.tweetId = tweetId;
   }
 
-  function revertSupport(uint questionIdx) public {
+  function revertSupport(uint questionIdx) public deadline(DeadlineStates.After, questionIdx) {
     Question storage question = questions[questionIdx];
     uint amount = question.supporterAmount[msg.sender];
-    require(question.tweetId == 0 && now >= question.deadlineAt &&
-      !question.isSupportReverted[msg.sender] && amount > 0);
+    require(question.tweetId == 0 && !question.isSupportReverted[msg.sender] && amount > 0);
     assert(token.transfer(msg.sender, amount));
     question.isSupportReverted[msg.sender] = true;
   }

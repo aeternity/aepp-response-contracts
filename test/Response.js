@@ -134,8 +134,8 @@ contract('Response', (accounts) => {
                 }),
                 response.supporterAmount(questionIdx, accounts[0])
                   .then(amount => assert.equal(amount, testAmount)),
-                response.isSupportReverted(questionIdx, accounts[0])
-                  .then(isSupportReverted => assert.isFalse(isSupportReverted)),
+                response.supportRevertedAt(questionIdx, accounts[0])
+                  .then(supportRevertedAt => assert.equal(supportRevertedAt, 0)),
                 response.highestSupporter(questionIdx, 0).then(([address, supportAt, amount]) => {
                   assert.equal(address, accounts[0]);
                   assert.equal(amount, testAmount);
@@ -347,8 +347,8 @@ contract('Response', (accounts) => {
               .then(() => Promise.all([
                 token.balanceOf(accounts[0])
                   .then(balanceAfter => assert.equal(balanceAfter, +balanceBefore + testAmount)),
-                response.isSupportReverted(questionIdx, accounts[0])
-                  .then(isSupportReverted => assert.isTrue(isSupportReverted)),
+                response.supportRevertedAt(questionIdx, accounts[0])
+                  .then(supportRevertedAt => assert.notEqual(supportRevertedAt, 0)),
               ]))))));
 
   it('can\'t revert donation before deadline', () =>

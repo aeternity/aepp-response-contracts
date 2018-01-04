@@ -64,7 +64,7 @@ contract Response {
     uint answerTweetId;
 
     mapping(address => uint) supporterAmount;
-    mapping(address => bool) isSupportReverted;
+    mapping(address => uint) supportRevertedAt;
     HighestSupporter[5] highestSupporters;
     uint supporterCount;
     uint amount;
@@ -81,9 +81,9 @@ contract Response {
     return questions[questionIdx].supporterAmount[supporterAddress];
   }
 
-  function isSupportReverted(uint questionIdx, address supporterAddress) public constant
-  returns (bool) {
-    return questions[questionIdx].isSupportReverted[supporterAddress];
+  function supportRevertedAt(uint questionIdx, address supporterAddress) public constant
+  returns (uint) {
+    return questions[questionIdx].supportRevertedAt[supporterAddress];
   }
 
   function highestSupporter(uint questionIdx, uint supporterIdx) public constant
@@ -164,8 +164,8 @@ contract Response {
   public deadline(DeadlineStates.After, questionIdx) unanswered(questionIdx) {
     Question storage question = questions[questionIdx];
     uint amount = question.supporterAmount[msg.sender];
-    require(!question.isSupportReverted[msg.sender] && amount > 0);
+    require(question.supportRevertedAt[msg.sender] == 0 && amount > 0);
     assert(token.transfer(msg.sender, amount));
-    question.isSupportReverted[msg.sender] = true;
+    question.supportRevertedAt[msg.sender] = now;
   }
 }

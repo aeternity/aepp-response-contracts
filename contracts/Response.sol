@@ -55,7 +55,7 @@ contract Response {
 
   struct Question {
     uint twitterUserId;
-    string content;
+    bytes32 content;
     address author;
     address foundation;
     uint createdAt;
@@ -93,7 +93,7 @@ contract Response {
   }
 
   function createQuestion(
-    uint twitterUserId, string content, address foundation, uint amount
+    uint twitterUserId, bytes32 content, address foundation, uint amount
   ) payable public {
     require(msg.value == backendFee);
     require(token.transferFrom(msg.sender, this, amount));

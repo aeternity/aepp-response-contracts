@@ -12,7 +12,7 @@ const encodeParameters = web3_1_0.eth.abi.encodeParameters.bind(web3_1_0.eth.abi
 
 const month = 30 * 24 * 60 * 60;
 const testAccount = 123;
-const testQuestion = 'test_question';
+const testQuestion = '0xc0ffee0000000000000000000000000000000000000000000000000000000000';
 const testAmount = 2;
 const testAnswer = 321;
 
@@ -98,7 +98,7 @@ contract('Response', (accounts) => {
   const genSupportBytes = (questionIdx) =>
     encodeParameters(['uint', 'uint', 'uint'], [32 * 4, 32, questionIdx]);
 
-  const genCreateQuestionTest = repeat => () =>
+  it('create question', () =>
     Promise.all([
       AEToken.deployed(),
       Response.deployed(),
@@ -106,7 +106,7 @@ contract('Response', (accounts) => {
       .then(([token, response]) => Promise.all([
         token.balanceOf(response.address).then(balance => +balance),
         response.questionCount().then(count => +count),
-        'test_question'.repeat(repeat),
+        testQuestion,
       ])
         .then(([amountBefore, countBefore, question]) =>
           createQuestion({ content: question })
@@ -140,10 +140,7 @@ contract('Response', (accounts) => {
                 }),
                 token.balanceOf(response.address)
                   .then(d => assert.equal(d, amountBefore + testAmount)),
-              ]))));
-
-  it('create question', genCreateQuestionTest(1));
-  it('create question with content longer than 32 bytes', genCreateQuestionTest(16));
+              ])))));
 
   it('create question with backend fee', () =>
     AEToken.deployed().then(token =>

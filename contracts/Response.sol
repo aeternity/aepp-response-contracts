@@ -65,6 +65,7 @@ contract Response {
     mapping(address => uint) supporterAmount;
     mapping(address => uint) supportRevertedAt;
     HighestSupporter[5] highestSupporters;
+    uint highestLowestSupporterIdx;
     uint supporterCount;
     uint amount;
   }
@@ -112,6 +113,17 @@ contract Response {
     question.amount = amount;
     question.supporterAmount[msg.sender] = amount;
     question.highestSupporters[0] = HighestSupporter({ account: msg.sender, lastSupportAt: now });
+    question.highestLowestSupporterIdx = 1;
+  }
+
+  function updateHighestLowestSupporterIdx(uint qIdx) internal {
+    mapping(address => uint) amounts = questions[qIdx].supporterAmount;
+    HighestSupporter[5] storage supporters = questions[qIdx].highestSupporters;
+    uint sIdx;
+    for (uint i = 1; i <= 4; i++) {
+      if (amounts[supporters[i].account] < amounts[supporters[sIdx].account]) sIdx = i;
+    }
+    questions[qIdx].highestLowestSupporterIdx = sIdx;
   }
 
   function receiveApproval(
@@ -132,14 +144,16 @@ contract Response {
     amounts[from] += value;
 
     HighestSupporter[5] storage supporters = question.highestSupporters;
-    if (amounts[supporters[4].account] >= amounts[from] && supporters[4].account != from) {
-      return;
+    uint lowestIdx = question.highestLowestSupporterIdx;
+    if (amounts[from] > amounts[supporters[lowestIdx].account]) {
+      for (uint i = 0; i <= 4; i++)
+        if (supporters[i].account == from) {
+          if (i == lowestIdx) updateHighestLowestSupporterIdx(questionIdx);
+          return;
+        }
+      supporters[lowestIdx] = HighestSupporter({ account: from, lastSupportAt: now });
+      updateHighestLowestSupporterIdx(questionIdx);
     }
-    for (uint i = 0; i <= 4 && supporters[i].account != from; i++) {}
-    for (; i > 0 && amounts[supporters[i - 1].account] < amounts[from]; i--) {
-      if (i < 5) supporters[i] = question.highestSupporters[i - 1];
-    }
-    supporters[i] = HighestSupporter({ account: from, lastSupportAt: now });
   }
 
   function setQuestionTweetId(uint questionIdx, uint questionTweetId)

@@ -118,8 +118,8 @@ contract('Response', (accounts) => {
             .then(questionIdx =>
               Promise.all([
                 response.questions(questionIdx).then(([
-                  twitterUserId, content, author, foundation,
-                  createdAt, questionTweetId, answerTweetId, supporterCount, amount
+                  twitterUserId, content, author, foundation, createdAt, questionTweetId,
+                  answerTweetId, highestLowestSupporterIdx, supporterCount, amount
                 ]) => {
                   assert.equal(twitterUserId, testAccount);
                   assert.equal(content, question);
@@ -127,6 +127,7 @@ contract('Response', (accounts) => {
                   assert.equal(foundation, testFoundation);
                   assert.equal(questionTweetId, 0);
                   assert.equal(answerTweetId, 0);
+                  assert.equal(highestLowestSupporterIdx, 1);
                   assert.equal(supporterCount, 1);
                   assert.equal(amount, testAmount);
                 }),
@@ -179,8 +180,8 @@ contract('Response', (accounts) => {
       token.approveAndCall(response.address, testAmount * 2, genSupportBytes(questionIdx))
         .then(() => Promise.all([
           response.questions(questionIdx).then(([
-            twitterUserId, content, author, foundation,
-            createdAt, questionTweetId, answerTweetId, supporterCount, amount
+            twitterUserId, content, author, foundation, createdAt, questionTweetId,
+            answerTweetId, highestLowestSupporterIdx, supporterCount, amount
           ]) => {
             assert.equal(supporterCount, 1);
             assert.equal(amount, testAmount * 3);
@@ -199,8 +200,8 @@ contract('Response', (accounts) => {
         genSupportBytes(questionIdx), { from: accounts[1] })
         .then(() => Promise.all([
           response.questions(questionIdx).then(([
-            twitterUserId, content, author, foundation,
-            createdAt, questionTweetId, answerTweetId, supporterCount, amount
+            twitterUserId, content, author, foundation, createdAt, questionTweetId,
+            answerTweetId, highestLowestSupporterIdx, supporterCount, amount
           ]) => {
             assert.equal(supporterCount, 2);
             assert.equal(amount, testAmount * 3);
@@ -210,12 +211,12 @@ contract('Response', (accounts) => {
           response.supporterAmount(questionIdx, accounts[1])
             .then(amount => assert.equal(amount, testAmount * 2)),
           response.highestSupporter(questionIdx, 0).then(([address, supportAt, amount]) => {
-            assert.equal(address, accounts[1]);
-            assert.equal(amount, testAmount * 2);
-          }),
-          response.highestSupporter(questionIdx, 1).then(([address, supportAt, amount]) => {
             assert.equal(address, accounts[0]);
             assert.equal(amount, testAmount);
+          }),
+          response.highestSupporter(questionIdx, 1).then(([address, supportAt, amount]) => {
+            assert.equal(address, accounts[1]);
+            assert.equal(amount, testAmount * 2);
           }),
         ]))));
 
@@ -234,12 +235,11 @@ contract('Response', (accounts) => {
           return p;
         }, _.times(6, () => 0));
         amounts[0] += testAmount;
-        const f = v => supports.map(({ accountIdx }) => accountIdx).lastIndexOf(v);
         const addresses = amounts
           .map((amount, accountIdx) => ({ amount, accountIdx }))
-          .sort((a, b) => b.amount - a.amount || f(a.accountIdx) - f(b.accountIdx))
-          .map(({ accountIdx }) => accounts[accountIdx])
-          .slice(0, 5);
+          .sort((a, b) => b.amount - a.amount)
+          .filter((a, idx, arr) => a.amount >= arr[4].amount)
+          .map(({ accountIdx }) => accounts[accountIdx]);
         return [supporterCount, supports, amounts, addresses];
       })(),
     ])
@@ -250,8 +250,8 @@ contract('Response', (accounts) => {
               genSupportBytes(questionIdx), { from: accounts[accountIdx] })))
           .then(() => Promise.all([
             response.questions(questionIdx).then(([
-              twitterUserId, content, author, foundation,
-              createdAt, questionTweetId, answerTweetId, _supporterCount, amount
+              twitterUserId, content, author, foundation, createdAt, questionTweetId,
+              answerTweetId, highestLowestSupporterIdx, _supporterCount, amount
             ]) => {
               assert.equal(_supporterCount, supporterCount);
               assert.equal(amount, _.sum(amounts));
@@ -261,7 +261,7 @@ contract('Response', (accounts) => {
               .then(a => assert.deepEqual(a.map(i => +i), amounts)),
             Promise.all(_.times(5, idx =>
               response.highestSupporter(questionIdx, idx).then(([address]) => address)))
-              .then(a => assert.deepEqual(a, addresses)),
+              .then(arr => arr.forEach(a => assert.include(addresses, a))),
           ]))));
 
   it('can\'t increase after deadline', () =>

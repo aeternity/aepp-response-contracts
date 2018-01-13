@@ -25,7 +25,7 @@ contract Response {
   enum DeadlineStates { Before, After }
 
   modifier deadline(DeadlineStates state, uint questionIdx) {
-    uint deadlineAt = questions[questionIdx].deadlineAt;
+    uint deadlineAt = questions[questionIdx].createdAt + 30 days;
     require(state == DeadlineStates.Before && now < deadlineAt ||
       state == DeadlineStates.After && now >= deadlineAt);
     _;
@@ -59,7 +59,6 @@ contract Response {
     address author;
     address foundation;
     uint createdAt;
-    uint deadlineAt;
     uint questionTweetId;
     uint answerTweetId;
 
@@ -94,13 +93,11 @@ contract Response {
   }
 
   function createQuestion(
-    uint twitterUserId, string content, address foundation, uint deadlineAt, uint amount
+    uint twitterUserId, string content, address foundation, uint amount
   ) payable public {
     require(msg.value == backendFee);
     require(token.transferFrom(msg.sender, this, amount));
     require(foundations[foundation]);
-    require(now + 1 weeks <= deadlineAt);
-    require(now + 1 years >= deadlineAt);
     // todo twitter user id and content is unchecked
 
     backend.transfer(backendFee);
@@ -111,7 +108,6 @@ contract Response {
     question.author = msg.sender;
     question.foundation = foundation;
     question.createdAt = now;
-    question.deadlineAt = deadlineAt;
     question.supporterCount = 1;
     question.amount = amount;
     question.supporterAmount[msg.sender] = amount;
@@ -127,7 +123,7 @@ contract Response {
     assembly { questionIdx := mload(add(extraData, 32)) }
     Question storage question = questions[questionIdx];
     require(question.createdAt != 0);
-    require(now < question.deadlineAt);
+    require(now < question.createdAt + 30 days);
     require(0 == question.answerTweetId);
 
     question.amount += value;

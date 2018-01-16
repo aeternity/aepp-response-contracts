@@ -1,4 +1,8 @@
 .idea
 node_modules
-build
+build/*
+build/contracts/*
+!build/contracts/Store.json
+!build/contracts/AEToken.json
+!build/contracts/Response.json
 npm-debug.log

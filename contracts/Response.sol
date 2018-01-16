@@ -16,16 +16,11 @@ contract Response {
   bytes32 constant BACKEND = 'backend';
   bytes32 constant BACKEND_FEE = 'backendFee';
   bytes32 constant QUESTION_COUNT = 'questionCount';
-  bytes32 constant TWITTER_USER_ID = 'twitterUserId';
   bytes32 constant CONTENT = 'content';
   bytes32 constant AUTHOR = 'author';
   bytes32 constant FOUNDATION = 'foundation';
-  bytes32 constant CREATED_AT = 'createdAt';
-  bytes32 constant QUESTION_TWEET_ID = 'questionTweetId';
-  bytes32 constant ANSWER_TWEET_ID = 'answerTweetId';
-  bytes32 constant SUPPORTER_COUNT = 'supporterCount';
+  bytes32 constant PACKED_STATE = 'packedState';
   bytes32 constant AMOUNT = 'amount';
-  bytes32 constant HIGHEST_LOWEST_SUPPORTER_IDX = 'highestLowestSupporterIdx';
   bytes32 constant SUPPORTER_AMOUNT = 'supporterAmount';
   bytes32 constant SUPPORTER_REVERTED_AT = 'supportRevertedAt';
   bytes32 constant HIGHEST_SUPPORTERS = 'highestSupporters';
@@ -46,14 +41,14 @@ contract Response {
   enum DeadlineStates { Before, After }
 
   modifier deadline(DeadlineStates state, uint qIdx) {
-    uint deadlineAt = s.qUint(qIdx, CREATED_AT) + 30 days;
+    uint deadlineAt = questionState(qIdx).createdAt + 30 days;
     require(state == DeadlineStates.Before && now < deadlineAt ||
       state == DeadlineStates.After && now >= deadlineAt);
     _;
   }
 
   modifier unanswered(uint qIdx) {
-    require(s.qUint(qIdx, ANSWER_TWEET_ID) == 0);
+    require(!questionState(qIdx).answered);
     _;
   }
 
@@ -77,25 +72,65 @@ contract Response {
     return s.rUint(QUESTION_COUNT);
   }
 
+  struct QuestionState {
+    uint64 twitterUserId;
+    uint64 tweetId;
+    uint32 createdAt;
+    uint32 supporterCount;
+    bool answered;
+    uint8 highestLowestSupporterIdx;
+  }
+
+  function questionState(uint qIdx) internal view returns (QuestionState t) {
+    uint packedState = s.qUint(qIdx, PACKED_STATE);
+    t.twitterUserId = uint64(packedState);
+    packedState >>= 64;
+    t.tweetId = uint64(packedState);
+    packedState >>= 64;
+    t.createdAt = uint32(packedState);
+    packedState >>= 32;
+    t.supporterCount = uint32(packedState);
+    packedState >>= 32;
+    t.answered = packedState & 1 != 0;
+    packedState >>= 1;
+    t.highestLowestSupporterIdx = uint8(packedState);
+  }
+
+  function setQuestionState(uint qIdx, QuestionState t) internal {
+    uint packedState = t.highestLowestSupporterIdx;
+    packedState <<= 1;
+    packedState |= t.answered ? 1 : 0;
+    packedState <<= 32;
+    packedState |= t.supporterCount;
+    packedState <<= 32;
+    packedState |= t.createdAt;
+    packedState <<= 64;
+    packedState |= t.tweetId;
+    packedState <<= 64;
+    packedState |= t.twitterUserId;
+    s.setQ(qIdx, PACKED_STATE, packedState);
+  }
+
   function questions(uint qIdx) external view returns (
     uint twitterUserId,
     bytes32 content,
     address author,
     address foundation,
     uint createdAt,
-    uint questionTweetId,
-    uint answerTweetId,
+    uint tweetId,
+    bool answered,
     uint supporterCount,
     uint amount
   ) {
-    twitterUserId = s.qUint(qIdx, TWITTER_USER_ID);
+    QuestionState memory qs = questionState(qIdx);
+    twitterUserId = qs.twitterUserId;
     content = s.qBytes32(qIdx, CONTENT);
     author = s.qAddress(qIdx, AUTHOR);
     foundation = s.qAddress(qIdx, FOUNDATION);
-    createdAt = s.qUint(qIdx, CREATED_AT);
-    questionTweetId = s.qUint(qIdx, QUESTION_TWEET_ID);
-    answerTweetId = s.qUint(qIdx, ANSWER_TWEET_ID);
-    supporterCount = s.qUint(qIdx, SUPPORTER_COUNT);
+    createdAt = qs.createdAt;
+    tweetId = qs.tweetId;
+    answered = qs.answered;
+    supporterCount = qs.supporterCount;
     amount = s.qUint(qIdx, AMOUNT);
   }
 
@@ -117,7 +152,7 @@ contract Response {
   }
 
   function createQuestion(
-    uint twitterUserId, bytes32 content, address foundation, uint amount
+    uint64 twitterUserId, bytes32 content, address foundation, uint amount
   ) payable external {
     require(msg.value == s.rUint(BACKEND_FEE));
     require(token.transferFrom(msg.sender, this, amount));
@@ -130,10 +165,12 @@ contract Response {
     s.setQ(qIdx, AUTHOR, msg.sender);
     s.setQ(qIdx, FOUNDATION, foundation);
     s.setQ(qIdx, AMOUNT, amount);
-    s.setQ(qIdx, TWITTER_USER_ID, twitterUserId);
-    s.setQ(qIdx, CREATED_AT, now);
-    s.setQ(qIdx, SUPPORTER_COUNT, uint(1));
-    s.setQ(qIdx, HIGHEST_LOWEST_SUPPORTER_IDX, uint(1));
+    QuestionState memory qs;
+    qs.twitterUserId = twitterUserId;
+    qs.createdAt = uint32(now);
+    qs.supporterCount = 1;
+    qs.highestLowestSupporterIdx = 1;
+    setQuestionState(qIdx, qs);
     s.setQ(qIdx, SUPPORTER_AMOUNT, msg.sender, amount);
     s.setQ(qIdx, HIGHEST_SUPPORTERS, uint(0), ACCOUNT, msg.sender);
     s.setQ(qIdx, HIGHEST_SUPPORTERS, uint(0), LAST_SUPPORT_AT, now);
@@ -141,14 +178,16 @@ contract Response {
   }
 
   function updateHighestLowestSupporterIdx(uint qIdx) internal {
-    uint sIdx;
-    for (uint i = 1; i <= 4; i++) {
+    uint8 sIdx;
+    for (uint8 i = 1; i <= 4; i++) {
       if (s.qUint(qIdx, SUPPORTER_AMOUNT, s.qAddress(qIdx, HIGHEST_SUPPORTERS, i, ACCOUNT))
         < s.qUint(qIdx, SUPPORTER_AMOUNT, s.qAddress(qIdx, HIGHEST_SUPPORTERS, sIdx, ACCOUNT))) {
         sIdx = i;
       }
     }
-    s.setQ(qIdx, HIGHEST_LOWEST_SUPPORTER_IDX, sIdx);
+    QuestionState memory qs = questionState(qIdx);
+    qs.highestLowestSupporterIdx = sIdx;
+    setQuestionState(qIdx, qs);
   }
 
   function receiveApproval(address from, uint256 value, address, bytes extraData) public {
@@ -156,16 +195,20 @@ contract Response {
     require(token.transferFrom(from, this, value));
     uint qIdx;
     assembly { qIdx := mload(add(extraData, 32)) }
-    require(now < s.qUint(qIdx, CREATED_AT) + 30 days);
-    require(0 == s.qUint(qIdx, ANSWER_TWEET_ID));
+    QuestionState memory qs = questionState(qIdx);
+    require(now < qs.createdAt + 30 days);
+    require(!qs.answered);
 
     s.incQ(qIdx, AMOUNT, value);
     uint amountFrom = s.qUint(qIdx, SUPPORTER_AMOUNT, from);
-    if (0 == amountFrom) s.incQ(qIdx, SUPPORTER_COUNT, 1);
+    if (0 == amountFrom) {
+      qs.supporterCount += 1;
+      setQuestionState(qIdx, qs);
+    }
     amountFrom += value;
     s.setQ(qIdx, SUPPORTER_AMOUNT, from, amountFrom);
 
-    uint lowestIdx = s.qUint(qIdx, HIGHEST_LOWEST_SUPPORTER_IDX);
+    uint lowestIdx = qs.highestLowestSupporterIdx;
     if (s.qUint(qIdx, SUPPORTER_AMOUNT, s.qAddress(qIdx, HIGHEST_SUPPORTERS, lowestIdx, ACCOUNT))
       < amountFrom) {
       for (uint i = 0; i <= 4; i++)
@@ -179,16 +222,21 @@ contract Response {
     }
   }
 
-  function setQuestionTweetId(uint qIdx, uint questionTweetId)
+  function setQuestionTweetId(uint qIdx, uint64 questionTweetId)
   external onlyBy(s.rAddress(BACKEND)) deadline(DeadlineStates.Before, qIdx) {
-    require(0 == s.qUint(qIdx, QUESTION_TWEET_ID));
-    s.setQ(qIdx, QUESTION_TWEET_ID, questionTweetId);
+    QuestionState memory qs = questionState(qIdx);
+    require(!qs.answered && 0 == qs.tweetId);
+    qs.tweetId = questionTweetId;
+    setQuestionState(qIdx, qs);
   }
 
-  function setAnswerTweetId(uint qIdx, uint answerTweetId)
+  function setAnswerTweetId(uint qIdx, uint64 answerTweetId)
   external onlyBy(s.rAddress(BACKEND)) deadline(DeadlineStates.Before, qIdx) unanswered(qIdx) {
     assert(token.transfer(s.qAddress(qIdx, FOUNDATION), s.qUint(qIdx, AMOUNT)));
-    s.setQ(qIdx, ANSWER_TWEET_ID, answerTweetId);
+    QuestionState memory qs = questionState(qIdx);
+    qs.tweetId = answerTweetId;
+    qs.answered = true;
+    setQuestionState(qIdx, qs);
   }
 
   function revertSupport(uint qIdx)

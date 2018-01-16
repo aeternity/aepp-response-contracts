@@ -57,27 +57,27 @@ contract Response {
     _;
   }
 
-  function setBackend(address backend) public onlyBy(owner) {
+  function setBackend(address backend) external onlyBy(owner) {
     s.setR(BACKEND, backend);
   }
 
-  function backendFee() public constant returns(uint) {
+  function backendFee() external view returns(uint) {
     return s.rUint(BACKEND_FEE);
   }
 
-  function setBackendFee(uint _backendFee) public onlyBy(s.rAddress(BACKEND)) {
+  function setBackendFee(uint _backendFee) external onlyBy(s.rAddress(BACKEND)) {
     s.setR(BACKEND_FEE, _backendFee);
   }
 
-  function setFoundation(address foundation, bool exist) public onlyBy(owner) {
+  function setFoundation(address foundation, bool exist) external onlyBy(owner) {
     s.setR(FOUNDATION, foundation, exist);
   }
 
-  function questionCount() public constant returns (uint) {
+  function questionCount() external view returns (uint) {
     return s.rUint(QUESTION_COUNT);
   }
 
-  function questions(uint qIdx) public constant returns (
+  function questions(uint qIdx) external view returns (
     uint twitterUserId,
     bytes32 content,
     address author,
@@ -99,17 +99,17 @@ contract Response {
     amount = s.qUint(qIdx, AMOUNT);
   }
 
-  function supporterAmount(uint qIdx, address supporterAddress) public constant
+  function supporterAmount(uint qIdx, address supporterAddress) external view
   returns (uint) {
     return s.qUint(qIdx, SUPPORTER_AMOUNT, supporterAddress);
   }
 
-  function supportRevertedAt(uint qIdx, address supporterAddress) public constant
+  function supportRevertedAt(uint qIdx, address supporterAddress) external view
   returns (uint) {
     return s.qUint(qIdx, SUPPORTER_REVERTED_AT, supporterAddress);
   }
 
-  function highestSupporter(uint qIdx, uint supporterIdx) public constant
+  function highestSupporter(uint qIdx, uint supporterIdx) external view
   returns (address account, uint lastSupportAt, uint amount) {
     account = s.qAddress(qIdx, HIGHEST_SUPPORTERS, supporterIdx, ACCOUNT);
     lastSupportAt = s.qUint(qIdx, HIGHEST_SUPPORTERS, supporterIdx, LAST_SUPPORT_AT);
@@ -118,7 +118,7 @@ contract Response {
 
   function createQuestion(
     uint twitterUserId, bytes32 content, address foundation, uint amount
-  ) payable public {
+  ) payable external {
     require(msg.value == s.rUint(BACKEND_FEE));
     require(token.transferFrom(msg.sender, this, amount));
     require(s.rBool(FOUNDATION, foundation));
@@ -180,19 +180,19 @@ contract Response {
   }
 
   function setQuestionTweetId(uint qIdx, uint questionTweetId)
-  public onlyBy(s.rAddress(BACKEND)) deadline(DeadlineStates.Before, qIdx) {
+  external onlyBy(s.rAddress(BACKEND)) deadline(DeadlineStates.Before, qIdx) {
     require(0 == s.qUint(qIdx, QUESTION_TWEET_ID));
     s.setQ(qIdx, QUESTION_TWEET_ID, questionTweetId);
   }
 
   function setAnswerTweetId(uint qIdx, uint answerTweetId)
-  public onlyBy(s.rAddress(BACKEND)) deadline(DeadlineStates.Before, qIdx) unanswered(qIdx) {
+  external onlyBy(s.rAddress(BACKEND)) deadline(DeadlineStates.Before, qIdx) unanswered(qIdx) {
     assert(token.transfer(s.qAddress(qIdx, FOUNDATION), s.qUint(qIdx, AMOUNT)));
     s.setQ(qIdx, ANSWER_TWEET_ID, answerTweetId);
   }
 
   function revertSupport(uint qIdx)
-  public deadline(DeadlineStates.After, qIdx) unanswered(qIdx) {
+  external deadline(DeadlineStates.After, qIdx) unanswered(qIdx) {
     uint amount = s.qUint(qIdx, SUPPORTER_AMOUNT, msg.sender);
     require(amount > 0 && s.qUint(qIdx, SUPPORTER_REVERTED_AT, msg.sender) == 0);
     assert(token.transfer(msg.sender, amount));

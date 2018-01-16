@@ -3,6 +3,7 @@ const Web3_1_0 = require('web3');
 
 const web3_1_0 = new Web3_1_0();
 const AEToken = artifacts.require('AEToken');
+const Store = artifacts.require('Store');
 const Response = artifacts.require('Response');
 
 const assertError = error =>
@@ -44,7 +45,6 @@ const getBalance = account => new Promise((resolve, reject) =>
   }));
 
 contract('Response', (accounts) => {
-  const testToken = accounts[0];
   const testBackend = accounts[1];
   const testFoundation = accounts[2];
 
@@ -66,32 +66,42 @@ contract('Response', (accounts) => {
           .then(count => [response, count - 1, token]));
   };
 
+  const createResponse = () =>
+    Promise.all([
+      Store.new(),
+      AEToken.deployed(),
+    ])
+      .then(([store, token]) =>
+        Response.new(store.address, token.address).then(response =>
+          store.setWriteAccess(response.address, true)
+            .then(() => ([response, token]))));
+
   it('set backend', () =>
-    Response.new(testToken).then(response => response.setBackend(accounts[2])));
+    createResponse().then(([response]) => response.setBackend(accounts[2])));
 
   it('can\'t set backend by not the owner', () =>
-    Response.new(testToken).then(response =>
+    createResponse().then(([response]) =>
       response.setBackend(accounts[2], { from: accounts[1] })
         .then(assert.fail, assertError)));
 
   it('set backend fee', () =>
-    Response.new(testToken).then(response =>
+    createResponse().then(([response]) =>
       response.setBackend(accounts[1])
         .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
         .then(() => response.backendFee())
         .then(backendFee => assert.equal(backendFee, testAmount))));
 
   it('can\'t set backend fee by not the backend', () =>
-    Response.new(testToken).then(response =>
+    createResponse().then(([response]) =>
       response.setBackendFee(testAmount, { from: accounts[1] })
         .then(assert.fail, assertError)));
 
   it('set foundation', () =>
-    Response.new(testToken).then(response =>
+    createResponse().then(([response]) =>
       response.setFoundation(accounts[1], true)));
 
   it('can\'t set foundation by not the owner', () =>
-    Response.new(testToken).then(response =>
+    createResponse().then(([response]) =>
       response.setFoundation(accounts[2], true, { from: accounts[1] })
         .then(assert.fail, assertError)));
 
@@ -118,8 +128,8 @@ contract('Response', (accounts) => {
             .then(questionIdx =>
               Promise.all([
                 response.questions(questionIdx).then(([
-                  twitterUserId, content, author, foundation, createdAt, questionTweetId,
-                  answerTweetId, highestLowestSupporterIdx, supporterCount, amount
+                  twitterUserId, content, author, foundation, createdAt,
+                  questionTweetId, answerTweetId, supporterCount, amount,
                 ]) => {
                   assert.equal(twitterUserId, testAccount);
                   assert.equal(content, question);
@@ -127,7 +137,6 @@ contract('Response', (accounts) => {
                   assert.equal(foundation, testFoundation);
                   assert.equal(questionTweetId, 0);
                   assert.equal(answerTweetId, 0);
-                  assert.equal(highestLowestSupporterIdx, 1);
                   assert.equal(supporterCount, 1);
                   assert.equal(amount, testAmount);
                 }),
@@ -144,44 +153,42 @@ contract('Response', (accounts) => {
               ])))));
 
   it('create question with backend fee', () =>
-    AEToken.deployed().then(token =>
-      Response.new(token.address).then(response =>
-        Promise.all([
-          response.setBackend(accounts[1]),
-          response.setFoundation(accounts[2], true),
-          token.approve(response.address, testAmount),
-        ])
-          .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
-          .then(() => getBalance(accounts[1]))
-          .then(backendBalanceBefore =>
-            response.createQuestion(
-              testAccount, testQuestion, accounts[2],
-              testAmount, { value: testAmount })
-              .then(() => getBalance(accounts[1]))
-              .then(backendBalance =>
-                assert.equal(+backendBalance, +backendBalanceBefore + testAmount))))));
+    createResponse().then(([response, token]) =>
+      Promise.all([
+        response.setBackend(accounts[1]),
+        response.setFoundation(accounts[2], true),
+        token.approve(response.address, testAmount),
+      ])
+        .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
+        .then(() => getBalance(accounts[1]))
+        .then(backendBalanceBefore =>
+          response.createQuestion(
+            testAccount, testQuestion, accounts[2],
+            testAmount, { value: testAmount })
+            .then(() => getBalance(accounts[1]))
+            .then(backendBalance =>
+              assert.equal(+backendBalance, +backendBalanceBefore + testAmount)))));
 
   it('can\'t create question without backend fee', () =>
-    AEToken.deployed().then(token =>
-      Response.new(token.address).then(response =>
-        Promise.all([
-          response.setBackend(accounts[1]),
-          response.setFoundation(accounts[2], true),
-          token.approve(response.address, testAmount),
-        ])
-          .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
-          .then(() =>
-            response.createQuestion(
-              testAccount, testQuestion, accounts[2], testAmount)
-              .then(assert.fail, assertError)))));
+    createResponse().then(([response, token]) =>
+      Promise.all([
+        response.setBackend(accounts[1]),
+        response.setFoundation(accounts[2], true),
+        token.approve(response.address, testAmount),
+      ])
+        .then(() => response.setBackendFee(testAmount, { from: accounts[1] }))
+        .then(() =>
+          response.createQuestion(
+            testAccount, testQuestion, accounts[2], testAmount)
+            .then(assert.fail, assertError))));
 
   it('increase by the same account', () =>
     createQuestion().then(([response, questionIdx, token]) =>
       token.approveAndCall(response.address, testAmount * 2, genSupportBytes(questionIdx))
         .then(() => Promise.all([
           response.questions(questionIdx).then(([
-            twitterUserId, content, author, foundation, createdAt, questionTweetId,
-            answerTweetId, highestLowestSupporterIdx, supporterCount, amount
+            twitterUserId, content, author, foundation, createdAt,
+            questionTweetId, answerTweetId, supporterCount, amount,
           ]) => {
             assert.equal(supporterCount, 1);
             assert.equal(amount, testAmount * 3);
@@ -200,8 +207,8 @@ contract('Response', (accounts) => {
         genSupportBytes(questionIdx), { from: accounts[1] })
         .then(() => Promise.all([
           response.questions(questionIdx).then(([
-            twitterUserId, content, author, foundation, createdAt, questionTweetId,
-            answerTweetId, highestLowestSupporterIdx, supporterCount, amount
+            twitterUserId, content, author, foundation, createdAt,
+            questionTweetId, answerTweetId, supporterCount, amount,
           ]) => {
             assert.equal(supporterCount, 2);
             assert.equal(amount, testAmount * 3);
@@ -243,20 +250,20 @@ contract('Response', (accounts) => {
         return [supporterCount, supports, amounts, addresses];
       })(),
     ])
-      .then(([[response, questionIdx, token], [supporterCount, supports, amounts, addresses]]) =>
+      .then(([[response, questionIdx, token], [sCount, supports, amounts, addresses]]) =>
         Promise.all(
           supports.map(({ amount, accountIdx }) => token
             .approveAndCall(response.address, amount,
               genSupportBytes(questionIdx), { from: accounts[accountIdx] })))
           .then(() => Promise.all([
             response.questions(questionIdx).then(([
-              twitterUserId, content, author, foundation, createdAt, questionTweetId,
-              answerTweetId, highestLowestSupporterIdx, _supporterCount, amount
+              twitterUserId, content, author, foundation, createdAt,
+              questionTweetId, answerTweetId, supporterCount, amount,
             ]) => {
-              assert.equal(_supporterCount, supporterCount);
+              assert.equal(sCount, supporterCount);
               assert.equal(amount, _.sum(amounts));
             }),
-            Promise.all(_.times(supporterCount, idx =>
+            Promise.all(_.times(sCount, idx =>
               response.supporterAmount(questionIdx, accounts[idx])))
               .then(a => assert.deepEqual(a.map(i => +i), amounts)),
             Promise.all(_.times(5, idx =>

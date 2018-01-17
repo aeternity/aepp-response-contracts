@@ -1,0 +1,337 @@
+{
+  "contractName": "Response",
+  "abi": [
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "qIdx",
+          "type": "uint256"
+        },
+        {
+          "name": "supporterIdx",
+          "type": "uint256"
+        }
+      ],
+      "name": "highestSupporter",
+      "outputs": [
+        {
+          "name": "account",
+          "type": "address"
+        },
+        {
+          "name": "lastSupportAt",
+          "type": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "qIdx",
+          "type": "uint256"
+        },
+        {
+          "name": "supporterAddress",
+          "type": "address"
+        }
+      ],
+      "name": "supporterAmount",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "backendFee",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "questionCount",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "qIdx",
+          "type": "uint256"
+        }
+      ],
+      "name": "questions",
+      "outputs": [
+        {
+          "name": "twitterUserId",
+          "type": "uint256"
+        },
+        {
+          "name": "content",
+          "type": "bytes32"
+        },
+        {
+          "name": "author",
+          "type": "address"
+        },
+        {
+          "name": "foundation",
+          "type": "address"
+        },
+        {
+          "name": "createdAt",
+          "type": "uint256"
+        },
+        {
+          "name": "tweetId",
+          "type": "uint256"
+        },
+        {
+          "name": "answered",
+          "type": "bool"
+        },
+        {
+          "name": "supporterCount",
+          "type": "uint256"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "qIdx",
+          "type": "uint256"
+        },
+        {
+          "name": "answerTweetId",
+          "type": "uint64"
+        }
+      ],
+      "name": "setAnswerTweetId",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "name": "value",
+          "type": "uint256"
+        },
+        {
+          "name": "",
+          "type": "address"
+        },
+        {
+          "name": "extraData",
+          "type": "bytes"
+        }
+      ],
+      "name": "receiveApproval",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "qIdx",
+          "type": "uint256"
+        }
+      ],
+      "name": "revertSupport",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "_backendFee",
+          "type": "uint256"
+        }
+      ],
+      "name": "setBackendFee",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "foundation",
+          "type": "address"
+        },
+        {
+          "name": "exist",
+          "type": "bool"
+        }
+      ],
+      "name": "setFoundation",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "backend",
+          "type": "address"
+        }
+      ],
+      "name": "setBackend",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "twitterUserId",
+          "type": "uint64"
+        },
+        {
+          "name": "content",
+          "type": "bytes32"
+        },
+        {
+          "name": "foundation",
+          "type": "address"
+        },
+        {
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "createQuestion",
+      "outputs": [],
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "name": "qIdx",
+          "type": "uint256"
+        },
+        {
+          "name": "questionTweetId",
+          "type": "uint64"
+        }
+      ],
+      "name": "setQuestionTweetId",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "name": "qIdx",
+          "type": "uint256"
+        },
+        {
+          "name": "supporterAddress",
+          "type": "address"
+        }
+      ],
+      "name": "supportRevertedAt",
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "name": "store",
+          "type": "address"
+        },
+        {
+          "name": "_token",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    }
+  ],
+  "compiler": {
+    "name": "solc",
+    "version": "0.4.18+commit.9cf6e910.Emscripten.clang"
+  },
+  "networks": {
+    "42": {
+      "events": {},
+      "links": {},
+      "address": "0x598ab01cfa3dc2c28d3f18c86429945d3888a830"
+    }
+  },
+  "schemaVersion": "1.0.1",
+  "updatedAt": "2018-01-16T20:26:10.319Z"
+}

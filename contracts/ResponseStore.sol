@@ -39,10 +39,12 @@ library ResponseStore {
     return s.getAddress(keccak256(R, Q, qIdx, n, u, st));
   }
 
+  // 
   function qUint(Store s, uint qIdx, bytes32 n) internal view returns(uint) {
     return s.getUint(keccak256(R, Q, qIdx, n));
   }
 
+  // get uint by address
   function qUint(Store s, uint qIdx, bytes32 n, address a) internal view returns(uint) {
     return s.getUint(keccak256(R, Q, qIdx, n, a));
   }
@@ -59,6 +61,8 @@ library ResponseStore {
     s.setAddress(keccak256(R, Q, qIdx, n), v);
   }
 
+  // used to set highest supporter's address
+  // set question uint/bytes32/uint
   function setQ(Store s, uint qIdx, bytes32 n, uint u, bytes32 st, address v) internal {
     s.setAddress(keccak256(R, Q, qIdx, n, u, st), v);
   }
@@ -67,18 +71,23 @@ library ResponseStore {
     s.setUint(keccak256(R, Q, qIdx, n), v);
   }
 
+  // used to set highest supporter's value
+  // set question uint/bytes32/uint
   function setQ(Store s, uint qIdx, bytes32 n, uint u, bytes32 st, uint v) internal {
     s.setUint(keccak256(R, Q, qIdx, n, u, st), v);
   }
 
+  // set question address/uint
   function setQ(Store s, uint qIdx, bytes32 n, address a, uint v) internal {
     return s.setUint(keccak256(R, Q, qIdx, n, a), v);
   }
 
+  // set question bytes32
   function setQ(Store s, uint qIdx, bytes32 n, bytes32 v) internal {
     s.setBytes32(keccak256(R, Q, qIdx, n), v);
   }
 
+  // increment question uint
   function incQ(Store s, uint qIdx, bytes32 n, uint v) internal {
     s.setUint(keccak256(R, Q, qIdx, n), s.getUint(keccak256(R, Q, qIdx, n)) + v);
   }
